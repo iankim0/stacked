@@ -122,9 +122,6 @@ export default function Home() {
               </div>
             ) : (
               <div className="space-y-4">
-                <div className="w-16 h-16 bg-surface rounded-full flex items-center justify-center mx-auto">
-                  <Plus size={24} className="text-muted-foreground" />
-                </div>
                 <div className="space-y-2">
                   <p className="text-xl font-semibold text-foreground">No workouts yet</p>
                   <p className="text-muted-foreground">Start tracking your fitness journey</p>
