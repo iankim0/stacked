@@ -156,16 +156,16 @@ export default function WorkoutDetail() {
           <h2 className="text-lg font-semibold text-foreground">Exercise Blocks</h2>
           
           {(workout.blocks || []).map((block, blockIndex) => (
-            <div key={block.id} className="space-y-3">
+            <div key={block.id} className={`space-y-3 ${block.type === 'superset' ? 'p-4 bg-primary/5 border-2 border-primary/20 rounded-xl' : ''}`}>
               {block.type === 'superset' && (
-                <Badge variant="default" className="text-xs">
+                <Badge variant="default" className="text-xs mb-2">
                   <Link size={12} className="mr-1" />
                   Super Set
                 </Badge>
               )}
               
               {block.exercises.map((exercise, exerciseIndex) => (
-            <Card key={exercise.id} className="p-4 bg-surface border-border/50">
+            <Card key={exercise.id} className={`p-4 bg-surface border-border/50 ${block.type === 'superset' ? 'border-primary/30' : ''}`}>
               <div className="space-y-4">
                 {/* Exercise Header */}
                 <div className="flex items-center justify-between">
@@ -175,6 +175,11 @@ export default function WorkoutDetail() {
                       <Badge variant="secondary" className="text-xs">
                         Sets: {exercise.sets.length}
                       </Badge>
+                      {block.type === 'superset' && (
+                        <Badge variant="outline" className="text-xs border-primary/40 text-primary">
+                          Superset {exerciseIndex + 1}
+                        </Badge>
+                      )}
                       <span className="text-xs text-muted-foreground">
                         Volume: {Math.round(convertFromKg(
                           exercise.sets.reduce((acc, set) => acc + (convertToKg(set.weight, exercise.weightUnit) * set.reps), 0),
@@ -187,15 +192,14 @@ export default function WorkoutDetail() {
 
                 {/* Sets */}
                 <div className="space-y-2">
-                  <div className="grid grid-cols-4 gap-4 text-xs font-medium text-muted-foreground px-3">
+                  <div className="grid grid-cols-3 gap-4 text-xs font-medium text-muted-foreground px-3">
                     <div>Set</div>
                     <div>Reps</div>
-                    <div>Weight ({weightUnit})</div>
-                    <div>Volume</div>
+                    <div>Weight ({exercise.weightUnit})</div>
                   </div>
                   
                   {exercise.sets.map((set, setIndex) => (
-                    <div key={set.id} className="grid grid-cols-4 gap-4 p-3 bg-background rounded-lg border border-border/30">
+                    <div key={set.id} className="grid grid-cols-3 gap-4 p-3 bg-background rounded-lg border border-border/30">
                       <div className="text-sm font-medium text-muted-foreground">
                         {setIndex + 1}
                       </div>
@@ -204,9 +208,6 @@ export default function WorkoutDetail() {
                       </div>
                       <div className="text-sm text-foreground font-medium">
                         {set.weight}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        {Math.round(convertFromKg(convertToKg(set.weight, exercise.weightUnit) * set.reps, weightUnit))}
                       </div>
                     </div>
                   ))}

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, Save, Link, ChevronUp, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Save, Link, ChevronUp, ChevronDown, Copy, Search, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { BottomNav } from '@/components/ui/bottom-nav';
 import { storage } from '@/lib/storage';
 import { Workout, Exercise, ExerciseBlock, Set, WeightUnit } from '@/types/workout';
@@ -333,6 +334,8 @@ export default function AddWorkout() {
   });
   const [blocks, setBlocks] = useState<ExerciseBlock[]>([]);
   const [notes, setNotes] = useState('');
+  const [copyDialogOpen, setCopyDialogOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     const settings = storage.getSettings();
@@ -399,6 +402,64 @@ export default function AddWorkout() {
     setBlocks(newBlocks);
   };
 
+  const copyFromWorkout = (workout: Workout) => {
+    // Copy blocks with new IDs to avoid conflicts
+    const copiedBlocks = workout.blocks.map(block => ({
+      ...block,
+      id: Date.now().toString() + Math.random(),
+      exercises: block.exercises.map(exercise => ({
+        ...exercise,
+        id: Date.now().toString() + Math.random(),
+        sets: exercise.sets.map(set => ({
+          ...set,
+          id: Date.now().toString() + Math.random()
+        }))
+      }))
+    }));
+    
+    setBlocks([...blocks, ...copiedBlocks]);
+    setCopyDialogOpen(false);
+    setSearchTerm('');
+    
+    toast({
+      title: "Workout Copied",
+      description: `Exercises from "${workout.name}" have been added.`
+    });
+  };
+
+  const getFilteredWorkouts = () => {
+    const allWorkouts = storage.getWorkouts();
+    if (!searchTerm.trim()) return []; // Don't show any workouts until user searches
+    
+    const query = searchTerm.toLowerCase();
+    return allWorkouts.filter(workout => {
+      // Check workout name
+      if (workout.name.toLowerCase().includes(query)) return true;
+      
+      // Check date (supports YYYY-MM-DD, MM/DD/YYYY, or partial matches)
+      const workoutDate = workout.date.split('T')[0]; // Get YYYY-MM-DD part
+      if (workoutDate.includes(query)) return true;
+      
+      // Check formatted date variations - fix timezone issue
+      const date = new Date(workout.date + 'T12:00:00');
+      const formattedDate = format(date, 'M/d/yyyy'); // US format like 1/15/2024
+      if (formattedDate.includes(query)) return true;
+      
+      // Check month only (YYYY-MM)
+      if (workoutDate.substring(0, 7).includes(query)) return true;
+      
+      // Check year only (YYYY)
+      if (workoutDate.substring(0, 4).includes(query)) return true;
+      
+      // Check exercises in blocks
+      return workout.blocks?.some(block => 
+        block.exercises.some(exercise => 
+          exercise.name.toLowerCase().includes(query)
+        )
+      ) || false;
+    });
+  };
+
   const saveWorkout = () => {
     if (!workoutName.trim()) {
       toast({
@@ -455,7 +516,7 @@ export default function AddWorkout() {
       });
     }
 
-    navigate('/');
+    navigate(`/workout/${workout.id}`);
   };
 
   return (
@@ -562,11 +623,115 @@ export default function AddWorkout() {
           <Button
             variant="outline"
             onClick={() => addBlock('superset')}
-            className="w-full h-10 border-dashed border-secondary/50 text-secondary-foreground hover:bg-secondary/10 hover:border-secondary"
+            className="w-full h-10 border-dashed border-muted-foreground/30 text-foreground hover:bg-accent/50 hover:border-muted-foreground/50"
           >
             <Link size={16} className="mr-2" />
             Add Superset (2 exercises)
           </Button>
+          
+          {/* Copy from Existing Workout */}
+          <Dialog open={copyDialogOpen} onOpenChange={setCopyDialogOpen}>
+            <DialogTrigger asChild>
+              <Button
+                variant="outline"
+                className="w-full h-10 border-dashed border-secondary/50 text-muted-foreground hover:bg-secondary/10 hover:border-secondary hover:text-secondary-foreground"
+              >
+                <Copy size={16} className="mr-2" />
+                Copy from Previous Workout
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md max-h-[80vh] flex flex-col p-0 top-[10%] translate-y-0">
+              <div className="p-6 pb-4 border-b border-border">
+                <DialogTitle className="mb-3">Copy from Previous Workout</DialogTitle>
+                <div className="relative">
+                  <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Search workouts, exercises, or dates..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 pr-12"
+                  />
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-2 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                      >
+                        <HelpCircle size={16} />
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-md">
+                      <DialogHeader>
+                        <DialogTitle>Search Help</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div>
+                          <h4 className="font-medium text-sm mb-2">Search by Workouts</h4>
+                          <p className="text-sm text-muted-foreground">Type workout names like "Push Day" or "Leg Workout"</p>
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-sm mb-2">Search by Exercises</h4>
+                          <p className="text-sm text-muted-foreground">Type exercise names like "Bench Press" or "Squats"</p>
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-sm mb-2">Search by Dates</h4>
+                          <div className="text-sm text-muted-foreground space-y-1">
+                            <p>• <code className="bg-muted px-1 rounded">2024-01-15</code> (Full date)</p>
+                            <p>• <code className="bg-muted px-1 rounded">1/15/2024</code> (US format)</p>
+                            <p>• <code className="bg-muted px-1 rounded">2024-01</code> (Month only)</p>
+                            <p>• <code className="bg-muted px-1 rounded">2024</code> (Year only)</p>
+                          </div>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              </div>
+              <div className="flex-1 overflow-hidden p-4 pt-2">
+                <div className="h-full overflow-y-auto space-y-2">
+                  {getFilteredWorkouts().map(workout => (
+                    <Card 
+                      key={workout.id} 
+                      className="p-3 hover:bg-accent/50 cursor-pointer transition-colors"
+                      onClick={() => copyFromWorkout(workout)}
+                    >
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-medium text-sm">{workout.name}</h4>
+                          <span className="text-xs text-muted-foreground">
+                            {format(new Date(workout.date + 'T12:00:00'), 'MMM d')}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {workout.blocks.slice(0, 3).map(block => 
+                            block.exercises.map(exercise => (
+                              <Badge key={exercise.id} variant="secondary" className="text-xs">
+                                {exercise.name || 'Unnamed'}
+                              </Badge>
+                            ))
+                          )}
+                          {workout.blocks.length > 3 && (
+                            <Badge variant="outline" className="text-xs">
+                              +{workout.blocks.length - 3} more
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                  
+                  {getFilteredWorkouts().length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p className="text-sm">
+                        {searchTerm ? "No workouts found matching your search." : "Start typing to search your workouts..."}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
 
         {/* Notes */}

@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Filter, Plus } from 'lucide-react';
+import { Search, Filter, Plus, HelpCircle } from 'lucide-react';
+import { format } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { WorkoutCard } from '@/components/workout/workout-card';
 import { BottomNav } from '@/components/ui/bottom-nav';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { storage } from '@/lib/storage';
 import { initializeSampleData } from '@/lib/sample-data';
 import { Workout } from '@/types/workout';
@@ -15,6 +17,8 @@ export default function Home() {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredWorkouts, setFilteredWorkouts] = useState<Workout[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 7;
 
   useEffect(() => {
     initializeSampleData();
@@ -23,6 +27,7 @@ export default function Home() {
 
   useEffect(() => {
     filterWorkouts();
+    setCurrentPage(1); // Reset to first page when search changes
   }, [workouts, searchQuery]);
 
   const loadWorkouts = () => {
@@ -44,7 +49,23 @@ export default function Home() {
 
     const query = searchQuery.toLowerCase();
     const filtered = workouts.filter(workout => {
+      // Check workout name
       if (workout.name.toLowerCase().includes(query)) return true;
+      
+      // Check date (supports YYYY-MM-DD, MM/DD/YYYY, or partial matches)
+      const workoutDate = workout.date.split('T')[0]; // Get YYYY-MM-DD part
+      if (workoutDate.includes(query)) return true;
+      
+      // Check formatted date variations - fix timezone issue  
+      const date = new Date(workout.date + 'T12:00:00');
+      const formattedDate = format(date, 'M/d/yyyy'); // US format like 1/15/2024
+      if (formattedDate.toLowerCase().includes(query)) return true;
+      
+      // Check month only (YYYY-MM)
+      if (workoutDate.substring(0, 7).includes(query)) return true;
+      
+      // Check year only (YYYY)
+      if (workoutDate.substring(0, 4).includes(query)) return true;
       
       // Check exercises in blocks
       return workout.blocks?.some(block => 
@@ -96,11 +117,46 @@ export default function Home() {
           <div className="relative">
             <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search workouts or exercises..."
+              placeholder="Search workouts, exercises, or dates..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 bg-surface border-border/50 focus:border-primary/50"
+              className="pl-10 pr-12 bg-surface border-border/50 focus:border-primary/50 placeholder:text-xs"
             />
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                >
+                  <HelpCircle size={16} />
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Search Help</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="font-medium text-sm mb-2">Search by Workouts</h4>
+                    <p className="text-sm text-muted-foreground">Type workout names like "Push Day" or "Leg Workout"</p>
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-sm mb-2">Search by Exercises</h4>
+                    <p className="text-sm text-muted-foreground">Type exercise names like "Bench Press" or "Squats"</p>
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-sm mb-2">Search by Dates</h4>
+                    <div className="text-sm text-muted-foreground space-y-1">
+                      <p>• <code className="bg-muted px-1 rounded">2024-01-15</code> (Full date)</p>
+                      <p>• <code className="bg-muted px-1 rounded">1/15/2024</code> (US format)</p>
+                      <p>• <code className="bg-muted px-1 rounded">2024-01</code> (Month only)</p>
+                      <p>• <code className="bg-muted px-1 rounded">2024</code> (Year only)</p>
+                    </div>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
       </div>
@@ -144,7 +200,7 @@ export default function Home() {
             </div>
             
             <div className="grid gap-4">
-              {filteredWorkouts.map((workout) => (
+              {filteredWorkouts.slice(0, currentPage * itemsPerPage).map((workout) => (
                 <WorkoutCard
                   key={workout.id}
                   workout={workout}
@@ -154,6 +210,19 @@ export default function Home() {
                 />
               ))}
             </div>
+            
+            {/* See More Button */}
+            {filteredWorkouts.length > currentPage * itemsPerPage && (
+              <div className="flex justify-center pt-4">
+                <Button 
+                  variant="outline"
+                  onClick={() => setCurrentPage(prev => prev + 1)}
+                  className="border-primary/20 text-primary hover:bg-primary/5"
+                >
+                  See More ({filteredWorkouts.length - currentPage * itemsPerPage} remaining)
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>
