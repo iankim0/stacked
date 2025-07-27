@@ -79,6 +79,12 @@ export default {
 				md: 'calc(var(--radius) - 2px)',
 				sm: 'calc(var(--radius) - 4px)'
 			},
+			spacing: {
+				'safe': 'env(safe-area-inset-top)',
+			},
+			padding: {
+				'safe': 'max(env(safe-area-inset-top), 4rem)',
+			},
 			keyframes: {
 				'accordion-down': {
 					from: {

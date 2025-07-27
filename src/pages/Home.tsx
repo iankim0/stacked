@@ -77,7 +77,7 @@ export default function Home() {
     <div className="min-h-screen bg-background pb-20">
       {/* Header */}
       <div className="sticky top-0 bg-background/95 backdrop-blur-sm border-b border-border z-40">
-        <div className="p-4 space-y-4">
+        <div className="pt-safe p-4 space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-foreground">Stacked</h1>

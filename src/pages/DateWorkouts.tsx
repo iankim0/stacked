@@ -53,7 +53,7 @@ export default function DateWorkouts() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="sticky top-0 bg-background/95 backdrop-blur-sm border-b border-border z-40">
-        <div className="p-4">
+        <div className="pt-safe p-4">
           <div className="flex items-center gap-3 mb-2">
             <Button
               variant="ghost"

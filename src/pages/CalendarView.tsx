@@ -61,7 +61,7 @@ export default function CalendarView() {
     <div className="min-h-screen bg-background pb-20">
       {/* Header */}
       <div className="sticky top-0 bg-background/95 backdrop-blur-sm border-b border-border z-40">
-        <div className="p-4">
+        <div className="pt-safe p-4">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-foreground">Calendar</h1>
@@ -75,7 +75,7 @@ export default function CalendarView() {
         </div>
       </div>
 
-      <div className="p-4 space-y-6">
+      <div className="p-4 pt-8 space-y-6">
         {/* Month Navigation */}
         <Card className="p-4 bg-surface border-border/50">
           <div className="flex items-center justify-between">

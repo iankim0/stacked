@@ -4,10 +4,10 @@ const config: CapacitorConfig = {
   appId: 'com.stacked.app',
   appName: 'stacked-lifting',
   webDir: 'dist',
-  server: {
-    url: 'https://405231b6-7d0c-42ac-8932-c04cc535ef0b.lovableproject.com?forceHideBadge=true',
-    cleartext: true
-  },
+  // server: {
+  //   url: 'http://192.168.1.192:8080/',
+  //   cleartext: true
+  // },
   plugins: {
     SplashScreen: {
       launchShowDuration: 0

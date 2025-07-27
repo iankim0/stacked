@@ -124,7 +124,7 @@ export default function Settings() {
     <div className="min-h-screen bg-background pb-20">
       {/* Header */}
       <div className="sticky top-0 bg-background/95 backdrop-blur-sm border-b border-border z-40">
-        <div className="p-4">
+        <div className="pt-safe p-4">
           <div className="flex items-center gap-3">
             <Button 
               variant="ghost" 
