@@ -184,7 +184,9 @@ export default function CalendarView() {
             <div>
               <div className="text-2xl font-bold text-foreground">
                 {workouts.filter(w => isSameMonth(new Date(w.date), currentDate))
-                  .reduce((acc, w) => acc + w.exercises.length, 0)}
+                  .reduce((acc, w) => {
+                    return acc + (w.blocks?.flatMap(block => block.exercises).length || 0);
+                  }, 0)}
               </div>
               <div className="text-sm text-muted-foreground">Total Exercises</div>
             </div>

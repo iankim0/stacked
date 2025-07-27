@@ -1,4 +1,4 @@
-import { Workout, AppSettings, WeightUnit } from '@/types/workout';
+import { Workout, AppSettings, WeightUnit, Exercise, ExerciseBlock } from '@/types/workout';
 
 const WORKOUTS_KEY = 'stacked_workouts';
 const SETTINGS_KEY = 'stacked_settings';
@@ -8,7 +8,26 @@ export const storage = {
   getWorkouts: (): Workout[] => {
     try {
       const data = localStorage.getItem(WORKOUTS_KEY);
-      return data ? JSON.parse(data) : [];
+      if (!data) return [];
+      
+      const workouts = JSON.parse(data);
+      // Convert legacy workouts to new format
+      return workouts.map((workout: any) => {
+        if ('exercises' in workout && !('blocks' in workout)) {
+          // Legacy format - convert to blocks
+          const blocks: ExerciseBlock[] = workout.exercises.map((exercise: Exercise) => ({
+            id: `${exercise.id}_block`,
+            type: 'single' as const,
+            exercises: [exercise]
+          }));
+          return {
+            ...workout,
+            blocks,
+            exercises: undefined // Remove old property
+          };
+        }
+        return workout;
+      });
     } catch {
       return [];
     }

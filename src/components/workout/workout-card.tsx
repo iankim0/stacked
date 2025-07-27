@@ -21,8 +21,14 @@ export function WorkoutCard({
   onView,
   className 
 }: WorkoutCardProps) {
-  const totalSets = workout.exercises.reduce((acc, exercise) => acc + exercise.sets.length, 0);
-  const exerciseCount = workout.exercises.length;
+  // Helper function to get all exercises from blocks
+  const getAllExercises = () => {
+    return workout.blocks?.flatMap(block => block.exercises) || [];
+  };
+
+  const allExercises = getAllExercises();
+  const totalSets = allExercises.reduce((acc, exercise) => acc + exercise.sets.length, 0);
+  const exerciseCount = allExercises.length;
 
   return (
     <Card className={cn(
@@ -88,14 +94,14 @@ export function WorkoutCard({
 
         {/* Exercise preview */}
         <div className="space-y-1">
-          {workout.exercises.slice(0, 2).map((exercise) => (
+          {allExercises.slice(0, 2).map((exercise) => (
             <div key={exercise.id} className="text-sm text-muted-foreground">
               {exercise.name} (Sets: {exercise.sets.length})
             </div>
           ))}
-          {workout.exercises.length > 2 && (
+          {allExercises.length > 2 && (
             <div className="text-sm text-muted-foreground">
-              +{workout.exercises.length - 2} more...
+              +{allExercises.length - 2} more...
             </div>
           )}
         </div>

@@ -236,11 +236,10 @@ export default function Settings() {
           <div className="space-y-2">
             <h3 className="font-semibold text-foreground">About Stacked</h3>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              A simple, beautiful workout tracking app built for consistency and progress. 
-              Track your exercises, monitor your volume, and watch your strength grow over time.
+              A simple app to record and monitor your progress. Stack good reps, sets, weight, and workouts with Stacked.
             </p>
             <div className="text-xs text-muted-foreground pt-2 border-t border-border/30">
-              Version 1.0 • Made with ❤️ for fitness enthusiasts
+              Version 1.0 • Made for athletes by athletes
             </div>
           </div>
         </Card>

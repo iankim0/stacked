@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'app.lovable.405231b67d0c42ac8932c04cc535ef0b',
+  appId: 'com.stacked.app',
   appName: 'stacked-lifting',
   webDir: 'dist',
   server: {

@@ -11,11 +11,17 @@ export interface Set {
   weight: number;
 }
 
+export interface ExerciseBlock {
+  id: string;
+  type: 'single' | 'superset';
+  exercises: Exercise[];
+}
+
 export interface Workout {
   id: string;
   name: string;
   date: string;
-  exercises: Exercise[];
+  blocks: ExerciseBlock[];
   notes?: string;
 }
 

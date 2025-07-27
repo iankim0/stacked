@@ -43,12 +43,16 @@ export default function Home() {
     }
 
     const query = searchQuery.toLowerCase();
-    const filtered = workouts.filter(workout => 
-      workout.name.toLowerCase().includes(query) ||
-      workout.exercises.some(exercise => 
-        exercise.name.toLowerCase().includes(query)
-      )
-    );
+    const filtered = workouts.filter(workout => {
+      if (workout.name.toLowerCase().includes(query)) return true;
+      
+      // Check exercises in blocks
+      return workout.blocks?.some(block => 
+        block.exercises.some(exercise => 
+          exercise.name.toLowerCase().includes(query)
+        )
+      ) || false;
+    });
     setFilteredWorkouts(filtered);
   };
 

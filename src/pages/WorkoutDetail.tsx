@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Edit, Trash2, Calendar, Dumbbell, Target, Weight } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Calendar, Dumbbell, Target, Weight, Link } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -60,8 +60,14 @@ export default function WorkoutDetail() {
     );
   }
 
-  const totalSets = workout.exercises.reduce((acc, exercise) => acc + exercise.sets.length, 0);
-  const totalVolume = workout.exercises.reduce((acc, exercise) => 
+  // Helper function to get all exercises from blocks
+  const getAllExercises = () => {
+    return workout.blocks?.flatMap(block => block.exercises) || [];
+  };
+
+  const allExercises = getAllExercises();
+  const totalSets = allExercises.reduce((acc, exercise) => acc + exercise.sets.length, 0);
+  const totalVolume = allExercises.reduce((acc, exercise) => 
     acc + exercise.sets.reduce((setAcc, set) => {
       const weightInKg = convertToKg(set.weight, exercise.weightUnit);
       return setAcc + (weightInKg * set.reps);
@@ -123,8 +129,8 @@ export default function WorkoutDetail() {
               <div className="flex items-center justify-center w-10 h-10 bg-primary/20 rounded-full mx-auto mb-2">
                 <Dumbbell size={18} className="text-primary" />
               </div>
-              <div className="text-lg font-bold text-foreground">{workout.exercises.length}</div>
-              <div className="text-xs text-muted-foreground">Exercise{workout.exercises.length !== 1 ? 's' : ''}</div>
+              <div className="text-lg font-bold text-foreground">{allExercises.length}</div>
+              <div className="text-xs text-muted-foreground">Exercise{allExercises.length !== 1 ? 's' : ''}</div>
             </div>
             
             <div className="text-center">
@@ -145,11 +151,20 @@ export default function WorkoutDetail() {
           </div>
         </Card>
 
-        {/* Exercises */}
+        {/* Exercise Blocks */}
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-foreground">Exercises</h2>
+          <h2 className="text-lg font-semibold text-foreground">Exercise Blocks</h2>
           
-          {workout.exercises.map((exercise, exerciseIndex) => (
+          {(workout.blocks || []).map((block, blockIndex) => (
+            <div key={block.id} className="space-y-3">
+              {block.type === 'superset' && (
+                <Badge variant="default" className="text-xs">
+                  <Link size={12} className="mr-1" />
+                  Super Set
+                </Badge>
+              )}
+              
+              {block.exercises.map((exercise, exerciseIndex) => (
             <Card key={exercise.id} className="p-4 bg-surface border-border/50">
               <div className="space-y-4">
                 {/* Exercise Header */}
@@ -197,7 +212,9 @@ export default function WorkoutDetail() {
                   ))}
                 </div>
               </div>
-            </Card>
+              </Card>
+              ))}
+            </div>
           ))}
         </div>
 
