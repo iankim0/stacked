@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Settings as SettingsIcon, Scale, Download, Upload, Trash } from 'lucide-react';
+import { ArrowLeft, Settings as SettingsIcon, Scale, Download, Upload, Trash, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import { BottomNav } from '@/components/ui/bottom-nav';
 import { storage } from '@/lib/storage';
 import { WeightUnit } from '@/types/workout';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -120,6 +121,33 @@ export default function Settings() {
     }
   };
 
+  const handleSignOut = async () => {
+    try {
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+          localStorage.removeItem(key);
+        }
+      });
+      
+      await supabase.auth.signOut({ scope: 'global' });
+      
+      toast({
+        title: "Signed out",
+        description: "You've been successfully signed out.",
+      });
+      
+      window.location.href = '/auth';
+    } catch (error) {
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+          localStorage.removeItem(key);
+        }
+      });
+      
+      window.location.href = '/auth';
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background pb-20">
       {/* Header */}
@@ -226,6 +254,25 @@ export default function Settings() {
               <div className="text-left">
                 <div className="text-sm font-medium">Clear All Data</div>
                 <div className="text-xs text-destructive/70">Delete all workouts permanently</div>
+              </div>
+            </Button>
+          </Card>
+        </div>
+
+        {/* Account */}
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold text-foreground">Account</h2>
+          
+          <Card className="p-4 bg-surface border-border/50">
+            <Button 
+              variant="outline"
+              onClick={handleSignOut}
+              className="w-full justify-start h-12 border-border/50 hover:bg-secondary/50"
+            >
+              <LogOut size={18} className="mr-3 text-muted-foreground" />
+              <div className="text-left">
+                <div className="text-sm font-medium text-foreground">Sign Out</div>
+                <div className="text-xs text-muted-foreground">Sign out of your account</div>
               </div>
             </Button>
           </Card>
