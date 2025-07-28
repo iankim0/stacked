@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Plus, Trash2, Save, Link, ChevronUp, ChevronDown, Copy, Search, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumberInput } from '@/components/ui/number-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
@@ -260,13 +261,15 @@ function ExerciseBlockComponent({
                           <Label htmlFor={`reps-${set.id}`} className="text-xs text-muted-foreground">
                             Reps
                           </Label>
-                          <Input
+                          <NumberInput
                             id={`reps-${set.id}`}
-                            type="number"
-                            min="0"
-                            value={set.reps || ''}
-                            onChange={(e) => updateSet(exercise.id, set.id, 'reps', Number(e.target.value))}
-                            className="h-9 bg-surface border-border/50 focus:border-primary/50"
+                            value={set.reps || 0}
+                            onChange={(value) => updateSet(exercise.id, set.id, 'reps', value)}
+                            min={0}
+                            max={999}
+                            step={1}
+                            className="bg-surface border-border/50 focus:border-primary/50"
+                            placeholder="0"
                           />
                         </div>
                         
@@ -274,14 +277,15 @@ function ExerciseBlockComponent({
                           <Label htmlFor={`weight-${set.id}`} className="text-xs text-muted-foreground">
                             Weight ({exercise.weightUnit || weightUnit})
                           </Label>
-                          <Input
+                          <NumberInput
                             id={`weight-${set.id}`}
-                            type="number"
-                            min="0"
-                            step="0.5"
-                            value={set.weight || ''}
-                            onChange={(e) => updateSet(exercise.id, set.id, 'weight', Number(e.target.value))}
-                            className="h-9 bg-surface border-border/50 focus:border-primary/50"
+                            value={set.weight || 0}
+                            onChange={(value) => updateSet(exercise.id, set.id, 'weight', value)}
+                            min={0}
+                            max={9999}
+                            step={0.5}
+                            className="bg-surface border-border/50 focus:border-primary/50"
+                            placeholder="0"
                           />
                         </div>
                       </div>
@@ -649,7 +653,7 @@ export default function AddWorkout() {
                     placeholder="Search workouts, exercises, or dates..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 pr-12"
+                    className="pl-10 pr-12 placeholder:text-xs"
                   />
                   <Dialog>
                     <DialogTrigger asChild>
