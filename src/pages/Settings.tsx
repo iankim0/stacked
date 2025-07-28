@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BottomNav } from '@/components/ui/bottom-nav';
-import { storage } from '@/lib/storage';
+import { supabaseStorage } from '@/lib/supabase-storage';
 import { WeightUnit } from '@/types/workout';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,26 +17,30 @@ export default function Settings() {
   const [workoutCount, setWorkoutCount] = useState(0);
 
   useEffect(() => {
-    const settings = storage.getSettings();
-    setWeightUnit(settings.weightUnit);
+    const loadSettings = async () => {
+      const settings = await supabaseStorage.getSettings();
+      setWeightUnit(settings.weightUnit);
+      
+      const workouts = await supabaseStorage.getWorkouts();
+      setWorkoutCount(workouts.length);
+    };
     
-    const workouts = storage.getWorkouts();
-    setWorkoutCount(workouts.length);
+    loadSettings();
   }, []);
 
-  const handleWeightUnitChange = (newUnit: WeightUnit) => {
+  const handleWeightUnitChange = async (newUnit: WeightUnit) => {
     setWeightUnit(newUnit);
-    const settings = storage.getSettings();
-    storage.saveSettings({ ...settings, weightUnit: newUnit });
+    const settings = await supabaseStorage.getSettings();
+    await supabaseStorage.saveSettings({ ...settings, weightUnit: newUnit });
     toast({
       title: "Settings Updated",
       description: `Weight unit changed to ${newUnit}`,
     });
   };
 
-  const exportData = () => {
-    const workouts = storage.getWorkouts();
-    const settings = storage.getSettings();
+  const exportData = async () => {
+    const workouts = await supabaseStorage.getWorkouts();
+    const settings = await supabaseStorage.getSettings();
     const exportData = {
       workouts,
       settings,
@@ -62,26 +66,29 @@ export default function Settings() {
     });
   };
 
-  const importData = () => {
+  const importData = async () => {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.json';
     
-    input.onchange = (e) => {
+    input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
 
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = async (e) => {
         try {
           const data = JSON.parse(e.target?.result as string);
           
           if (data.workouts && Array.isArray(data.workouts)) {
-            storage.saveWorkouts(data.workouts);
+            // Import workouts one by one
+            for (const workout of data.workouts) {
+              await supabaseStorage.addWorkout(workout);
+            }
           }
           
           if (data.settings) {
-            storage.saveSettings(data.settings);
+            await supabaseStorage.saveSettings(data.settings);
             setWeightUnit(data.settings.weightUnit || 'kg');
           }
 
@@ -106,29 +113,42 @@ export default function Settings() {
     input.click();
   };
 
-  const clearAllData = () => {
+  const clearAllData = async () => {
     if (confirm('Are you sure you want to delete ALL workout data? This cannot be undone.')) {
-      localStorage.removeItem('stacked_workouts');
-      localStorage.removeItem('stacked_settings');
-      setWorkoutCount(0);
-      setWeightUnit('kg');
-      
-      toast({
-        title: "Data Cleared",
-        description: "All workout data has been deleted",
-        variant: "destructive"
-      });
+      try {
+        const workouts = await supabaseStorage.getWorkouts();
+        for (const workout of workouts) {
+          await supabaseStorage.deleteWorkout(workout.id);
+        }
+        
+        setWorkoutCount(0);
+        setWeightUnit('kg');
+        
+        toast({
+          title: "Data Cleared",
+          description: "All workout data has been deleted",
+          variant: "destructive"
+        });
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to clear data",
+          variant: "destructive"
+        });
+      }
     }
   };
 
   const handleSignOut = async () => {
     try {
+      // Clean up auth state
       Object.keys(localStorage).forEach((key) => {
         if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
           localStorage.removeItem(key);
         }
       });
       
+      // Attempt global sign out
       await supabase.auth.signOut({ scope: 'global' });
       
       toast({
@@ -136,8 +156,10 @@ export default function Settings() {
         description: "You've been successfully signed out.",
       });
       
+      // Force page reload for a clean state
       window.location.href = '/auth';
     } catch (error) {
+      // Clean up anyway and redirect
       Object.keys(localStorage).forEach((key) => {
         if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
           localStorage.removeItem(key);

@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Dumbbell } from 'l
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { BottomNav } from '@/components/ui/bottom-nav';
-import { storage } from '@/lib/storage';
+import { supabaseStorage } from '@/lib/supabase-storage';
 import { Workout } from '@/types/workout';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, isSameMonth, isToday } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -15,8 +15,11 @@ export default function CalendarView() {
   const [currentDate, setCurrentDate] = useState(new Date());
 
   useEffect(() => {
-    const stored = storage.getWorkouts();
-    setWorkouts(stored);
+    const loadWorkouts = async () => {
+      const stored = await supabaseStorage.getWorkouts();
+      setWorkouts(stored);
+    };
+    loadWorkouts();
   }, []);
 
   const monthStart = startOfMonth(currentDate);

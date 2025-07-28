@@ -4,7 +4,7 @@ import { ArrowLeft, Calendar, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { WorkoutCard } from '@/components/workout/workout-card';
-import { storage } from '@/lib/storage';
+import { supabaseStorage } from '@/lib/supabase-storage';
 import { Workout } from '@/types/workout';
 import { format } from 'date-fns';
 
@@ -14,24 +14,28 @@ export default function DateWorkouts() {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
 
   useEffect(() => {
-    if (!date) return;
+    const loadWorkouts = async () => {
+      if (!date) return;
+      
+      const allWorkouts = await supabaseStorage.getWorkouts();
+      const filteredWorkouts = allWorkouts.filter(workout => {
+        // Parse workout date properly to avoid timezone issues
+        const workoutDate = workout.date.split('T')[0]; // Get YYYY-MM-DD
+        return workoutDate === date;
+      });
+      
+      setWorkouts(filteredWorkouts);
+    };
     
-    const allWorkouts = storage.getWorkouts();
-    const filteredWorkouts = allWorkouts.filter(workout => {
-      // Parse workout date properly to avoid timezone issues
-      const workoutDate = workout.date.includes('T') ? workout.date.split('T')[0] : workout.date;
-      return workoutDate === date;
-    });
-    
-    setWorkouts(filteredWorkouts);
+    loadWorkouts();
   }, [date]);
 
   const handleEdit = (workout: Workout) => {
     navigate(`/edit/${workout.id}`);
   };
 
-  const handleDelete = (id: string) => {
-    storage.deleteWorkout(id);
+  const handleDelete = async (id: string) => {
+    await supabaseStorage.deleteWorkout(id);
     setWorkouts(prev => prev.filter(w => w.id !== id));
   };
 

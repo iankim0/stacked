@@ -124,5 +124,34 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+    touch-action: manipulation;
+  }
+
+  /* Fix mobile touch/click issues */
+  button, input, select, textarea, [role="button"] {
+    touch-action: manipulation !important;
+    -webkit-tap-highlight-color: rgba(0,0,0,0.1);
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    position: relative;
+    z-index: 10;
+  }
+  
+  /* Disable text selection for everything else but keep pointer events */
+  *:not(input):not(textarea):not([contenteditable]) {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+
+  /* Allow text selection for inputs and text areas */
+  input, textarea, [contenteditable] {
+    -webkit-touch-callout: default;
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
   }
 }

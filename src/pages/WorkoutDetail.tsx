@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { BottomNav } from '@/components/ui/bottom-nav';
-import { storage } from '@/lib/storage';
+import { supabaseStorage } from '@/lib/supabase-storage';
 import { Workout, WeightUnit } from '@/types/workout';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -18,25 +18,29 @@ export default function WorkoutDetail() {
   const [weightUnit, setWeightUnit] = useState<WeightUnit>('kg');
 
   useEffect(() => {
-    const settings = storage.getSettings();
-    setWeightUnit(settings.weightUnit);
+    const loadData = async () => {
+      const settings = await supabaseStorage.getSettings();
+      setWeightUnit(settings.weightUnit);
 
-    if (id) {
-      const workouts = storage.getWorkouts();
-      const found = workouts.find(w => w.id === id);
-      if (found) {
-        setWorkout(found);
-      } else {
-        navigate('/');
+      if (id) {
+        const workouts = await supabaseStorage.getWorkouts();
+        const found = workouts.find(w => w.id === id);
+        if (found) {
+          setWorkout(found);
+        } else {
+          navigate('/');
+        }
       }
-    }
+    };
+    
+    loadData();
   }, [id, navigate]);
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!workout) return;
     
     if (confirm(`Are you sure you want to delete "${workout.name}"?`)) {
-      storage.deleteWorkout(workout.id);
+      await supabaseStorage.deleteWorkout(workout.id);
       toast({
         title: "Workout deleted",
         description: `"${workout.name}" has been removed.`,

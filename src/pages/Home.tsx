@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { WorkoutCard } from '@/components/workout/workout-card';
 import { BottomNav } from '@/components/ui/bottom-nav';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { storage } from '@/lib/storage';
+import { supabaseStorage } from '@/lib/supabase-storage';
 import { initializeSampleData } from '@/lib/sample-data';
 import { Workout } from '@/types/workout';
 import { toast } from '@/hooks/use-toast';
@@ -30,15 +30,24 @@ export default function Home() {
     setCurrentPage(1); // Reset to first page when search changes
   }, [workouts, searchQuery]);
 
-  const loadWorkouts = () => {
-    const stored = storage.getWorkouts();
-    // Sort by date descending (newest first) - avoid timezone issues
-    const sorted = stored.sort((a, b) => {
-      const dateA = a.date.split('T')[0];
-      const dateB = b.date.split('T')[0];
-      return dateB.localeCompare(dateA);
-    });
-    setWorkouts(sorted);
+  const loadWorkouts = async () => {
+    try {
+      const stored = await supabaseStorage.getWorkouts();
+      // Sort by date descending (newest first) - avoid timezone issues
+      const sorted = stored.sort((a, b) => {
+        const dateA = a.date.split('T')[0];
+        const dateB = b.date.split('T')[0];
+        return dateB.localeCompare(dateA);
+      });
+      setWorkouts(sorted);
+    } catch (error) {
+      console.error('Failed to load workouts:', error);
+      toast({
+        title: "Error loading workouts",
+        description: "Please try refreshing the page.",
+        variant: "destructive",
+      });
+    }
   };
 
   const filterWorkouts = () => {
@@ -77,13 +86,22 @@ export default function Home() {
     setFilteredWorkouts(filtered);
   };
 
-  const handleDeleteWorkout = (id: string) => {
-    storage.deleteWorkout(id);
-    loadWorkouts();
-    toast({
-      title: "Workout deleted",
-      description: "The workout has been removed.",
-    });
+  const handleDeleteWorkout = async (id: string) => {
+    try {
+      await supabaseStorage.deleteWorkout(id);
+      loadWorkouts();
+      toast({
+        title: "Workout deleted",
+        description: "The workout has been removed.",
+      });
+    } catch (error) {
+      console.error('Failed to delete workout:', error);
+      toast({
+        title: "Error deleting workout",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleEditWorkout = (workout: Workout) => {

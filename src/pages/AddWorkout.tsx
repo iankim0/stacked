@@ -11,10 +11,19 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { BottomNav } from '@/components/ui/bottom-nav';
-import { storage } from '@/lib/storage';
+import { supabaseStorage } from '@/lib/supabase-storage';
 import { Workout, Exercise, ExerciseBlock, Set, WeightUnit } from '@/types/workout';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+
+// Simple UUID generator for browser compatibility
+const generateId = () => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+};
 
 // Block Component
 function ExerciseBlockComponent({ 
@@ -35,16 +44,19 @@ function ExerciseBlockComponent({
   const [weightUnit, setWeightUnit] = useState<WeightUnit>('kg');
 
   useEffect(() => {
-    const settings = storage.getSettings();
-    setWeightUnit(settings.weightUnit);
+    const loadSettings = async () => {
+      const settings = await supabaseStorage.getSettings();
+      setWeightUnit(settings.weightUnit);
+    };
+    loadSettings();
   }, []);
 
   const addExerciseToBlock = () => {
     const newExercise: Exercise = {
-      id: Date.now().toString() + Math.random(),
+      id: generateId(),
       name: '',
       weightUnit: weightUnit,
-      sets: [{ id: Date.now().toString() + '_set', reps: 0, weight: 0 }]
+      sets: [{ id: generateId(), reps: 0, weight: 0 }]
     };
 
     onUpdateBlock(block.id, {
@@ -90,7 +102,7 @@ function ExerciseBlockComponent({
         ex.id === exerciseId 
           ? { 
               ...ex, 
-              sets: [...ex.sets, { id: Date.now().toString() + '_set', reps: 0, weight: 0 }] 
+              sets: [...ex.sets, { id: generateId(), reps: 0, weight: 0 }] 
             }
           : ex
       )
@@ -340,43 +352,48 @@ export default function AddWorkout() {
   const [notes, setNotes] = useState('');
   const [copyDialogOpen, setCopyDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [filteredWorkouts, setFilteredWorkouts] = useState<Workout[]>([]);
 
   useEffect(() => {
-    const settings = storage.getSettings();
-    setWeightUnit(settings.weightUnit);
+    const loadData = async () => {
+      const settings = await supabaseStorage.getSettings();
+      setWeightUnit(settings.weightUnit);
 
-    if (isEditing) {
-      const workouts = storage.getWorkouts();
-      const workout = workouts.find(w => w.id === workoutId);
-      if (workout) {
-        setWorkoutName(workout.name);
-        setWorkoutDate(workout.date.split('T')[0]);
-        setBlocks(workout.blocks || []);
-        setNotes(workout.notes || '');
-      } else {
-        navigate('/');
+      if (isEditing) {
+        const workouts = await supabaseStorage.getWorkouts();
+        const workout = workouts.find(w => w.id === workoutId);
+        if (workout) {
+          setWorkoutName(workout.name);
+          setWorkoutDate(workout.date.split('T')[0]);
+          setBlocks(workout.blocks || []);
+          setNotes(workout.notes || '');
+        } else {
+          navigate('/');
+        }
       }
-    }
+    };
+    
+    loadData();
   }, [isEditing, workoutId, navigate]);
 
   const addBlock = (type: 'single' | 'superset' = 'single') => {
     const newExercise: Exercise = {
-      id: Date.now().toString(),
+      id: generateId(),
       name: '',
       weightUnit: weightUnit,
-      sets: [{ id: Date.now().toString() + '_set', reps: 0, weight: 0 }]
+      sets: [{ id: generateId(), reps: 0, weight: 0 }]
     };
 
     const newBlock: ExerciseBlock = {
-      id: Date.now().toString() + '_block',
+      id: generateId(),
       type,
       exercises: type === 'superset' ? [
         newExercise,
         {
-          id: Date.now().toString() + '_2',
+          id: generateId(),
           name: '',
           weightUnit: weightUnit,
-          sets: [{ id: Date.now().toString() + '_set2', reps: 0, weight: 0 }]
+          sets: [{ id: generateId(), reps: 0, weight: 0 }]
         }
       ] : [newExercise]
     };
@@ -410,13 +427,13 @@ export default function AddWorkout() {
     // Copy blocks with new IDs to avoid conflicts
     const copiedBlocks = workout.blocks.map(block => ({
       ...block,
-      id: Date.now().toString() + Math.random(),
+      id: generateId(),
       exercises: block.exercises.map(exercise => ({
         ...exercise,
-        id: Date.now().toString() + Math.random(),
+        id: generateId(),
         sets: exercise.sets.map(set => ({
           ...set,
-          id: Date.now().toString() + Math.random()
+          id: generateId()
         }))
       }))
     }));
@@ -431,40 +448,49 @@ export default function AddWorkout() {
     });
   };
 
-  const getFilteredWorkouts = () => {
-    const allWorkouts = storage.getWorkouts();
-    if (!searchTerm.trim()) return []; // Don't show any workouts until user searches
+  useEffect(() => {
+    const updateFilteredWorkouts = async () => {
+      const allWorkouts = await supabaseStorage.getWorkouts();
+      if (!searchTerm.trim()) {
+        setFilteredWorkouts([]);
+        return;
+      }
+      
+      const query = searchTerm.toLowerCase();
+      const filtered = allWorkouts.filter(workout => {
+        // Check workout name
+        if (workout.name.toLowerCase().includes(query)) return true;
+        
+        // Check date (supports YYYY-MM-DD, MM/DD/YYYY, or partial matches)
+        const workoutDate = workout.date.split('T')[0]; // Get YYYY-MM-DD part
+        if (workoutDate.includes(query)) return true;
+        
+        // Check formatted date variations - fix timezone issue
+        const date = new Date(workout.date + 'T12:00:00');
+        const formattedDate = format(date, 'M/d/yyyy'); // US format like 1/15/2024
+        if (formattedDate.includes(query)) return true;
+        
+        // Check month only (YYYY-MM)
+        if (workoutDate.substring(0, 7).includes(query)) return true;
+        
+        // Check year only (YYYY)
+        if (workoutDate.substring(0, 4).includes(query)) return true;
+        
+        // Check exercises in blocks
+        return workout.blocks?.some(block => 
+          block.exercises.some(exercise => 
+            exercise.name.toLowerCase().includes(query)
+          )
+        ) || false;
+      });
+      
+      setFilteredWorkouts(filtered);
+    };
     
-    const query = searchTerm.toLowerCase();
-    return allWorkouts.filter(workout => {
-      // Check workout name
-      if (workout.name.toLowerCase().includes(query)) return true;
-      
-      // Check date (supports YYYY-MM-DD, MM/DD/YYYY, or partial matches)
-      const workoutDate = workout.date.split('T')[0]; // Get YYYY-MM-DD part
-      if (workoutDate.includes(query)) return true;
-      
-      // Check formatted date variations - fix timezone issue
-      const date = new Date(workout.date + 'T12:00:00');
-      const formattedDate = format(date, 'M/d/yyyy'); // US format like 1/15/2024
-      if (formattedDate.includes(query)) return true;
-      
-      // Check month only (YYYY-MM)
-      if (workoutDate.substring(0, 7).includes(query)) return true;
-      
-      // Check year only (YYYY)
-      if (workoutDate.substring(0, 4).includes(query)) return true;
-      
-      // Check exercises in blocks
-      return workout.blocks?.some(block => 
-        block.exercises.some(exercise => 
-          exercise.name.toLowerCase().includes(query)
-        )
-      ) || false;
-    });
-  };
+    updateFilteredWorkouts();
+  }, [searchTerm]);
 
-  const saveWorkout = () => {
+  const saveWorkout = async () => {
     if (!workoutName.trim()) {
       toast({
         title: "Validation Error",
@@ -496,7 +522,7 @@ export default function AddWorkout() {
     }
 
     const workout: Workout = {
-      id: isEditing ? workoutId! : Date.now().toString(),
+      id: isEditing ? workoutId! : generateId(),
       name: workoutName.trim(),
       date: workoutDate,
       blocks: blocks.map(block => ({
@@ -507,20 +533,36 @@ export default function AddWorkout() {
     };
 
     if (isEditing) {
-      storage.updateWorkout(workout);
-      toast({
-        title: "Workout Updated",
-        description: `"${workout.name}" has been updated.`
-      });
+      const success = await supabaseStorage.updateWorkout(workout);
+      if (success) {
+        toast({
+          title: "Workout Updated",
+          description: `"${workout.name}" has been updated.`
+        });
+        navigate(`/workout/${workout.id}`);
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to update workout. Please try again.",
+          variant: "destructive"
+        });
+      }
     } else {
-      storage.addWorkout(workout);
-      toast({
-        title: "Workout Saved",
-        description: `"${workout.name}" has been saved.`
-      });
+      const success = await supabaseStorage.addWorkout(workout);
+      if (success) {
+        toast({
+          title: "Workout Saved",
+          description: `"${workout.name}" has been saved.`
+        });
+        navigate(`/workout/${workout.id}`);
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to save workout. Please try again.",
+          variant: "destructive"
+        });
+      }
     }
-
-    navigate(`/workout/${workout.id}`);
   };
 
   return (
@@ -618,7 +660,17 @@ export default function AddWorkout() {
         <div className="space-y-2">
           <Button
             variant="outline"
-            onClick={() => addBlock('single')}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log('DIRECT CLICK HANDLER TRIGGERED');
+              addBlock('single');
+            }}
+            onTouchEnd={(e) => {
+              e.preventDefault();
+              console.log('TOUCH END TRIGGERED');
+              addBlock('single');
+            }}
             className="w-full h-12 border-dashed border-primary/50 text-primary hover:bg-primary/10 hover:border-primary"
           >
             <Plus size={18} className="mr-2" />
@@ -694,7 +746,7 @@ export default function AddWorkout() {
               </div>
               <div className="flex-1 overflow-hidden p-4 pt-2">
                 <div className="h-full overflow-y-auto space-y-2">
-                  {getFilteredWorkouts().map(workout => (
+                  {filteredWorkouts.map(workout => (
                     <Card 
                       key={workout.id} 
                       className="p-3 hover:bg-accent/50 cursor-pointer transition-colors"
@@ -725,7 +777,7 @@ export default function AddWorkout() {
                     </Card>
                   ))}
                   
-                  {getFilteredWorkouts().length === 0 && (
+                  {filteredWorkouts.length === 0 && (
                     <div className="text-center py-8 text-muted-foreground">
                       <p className="text-sm">
                         {searchTerm ? "No workouts found matching your search." : "Start typing to search your workouts..."}
